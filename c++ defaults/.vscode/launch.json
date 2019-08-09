@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) C++ Launch",
+            "preLaunchTask": "Build with Clang",
+            "type": "cppdbg",
+            "request": "launch",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "externalConsole": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "text": "handle SIGPIPE nostop noprint pass",
+                    "description": "ignore SIGPIPE",
+                    "ignoreFailures": true
+                }
+            ],
+            "logging": {
+                "engineLogging": false,
+                "trace": false
+            },
+            "windows": {
+                "program": "${workspaceFolder}/${relativeFile}.exe",
+                "MIMode": "gdb",
+                "miDebuggerPath": "D:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\bin\\gdb.exe"
+            },
+            "linux": {
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.out",
+                "MIMode": "gdb"
+            },
+            "osx": {
+                "program": "${workspaceRoot}/main.out",
+                // "program": "${workspaceRoot}/${fileBasenameNoExtension}.out",
+                "MIMode": "lldb",
+                "miDebuggerPath": "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-mi"
+            }
+        }
+    ]
+}
