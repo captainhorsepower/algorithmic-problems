@@ -46,47 +46,49 @@ void add_edge(vector< vector<edge*> > &g, const int from, const int to, const in
 }
 
 long long find_shortest_paht(vector< vector<edge*> > &g, int from, int to) {
-    vector< short > id(g.size());   // id = 0 - not calculated
-                                    //    = 1 - in queue
-                                    //    = 2 - calculated
-    vector< long long > distance(g.size(), __LONG_LONG_MAX__);
-    vector< edge* > parent(g.size());
-    id[from] = 1;
-    distance[from] = 0;
-    parent[from] = nullptr;
+    vector< edge* > parent_edge(g.size(), nullptr);
+    vector< long long > d(g.size(), __LONG_LONG_MAX__);
+    static vector< long long > potential(g.size(), 0);
+    set< int, function<bool (int, int)> > set([&](int a, int b) {
+        return d[a] == d[b] ? a < b : d[a] < d[b]; 
+    });
 
-    deque<int> q;
-    q.push_back(from);
+    d[from] = 0;
+    d[from - 1] = 0;
+    set.insert(from);
+    
+    while (!set.empty()) {
+        int v = *(set.begin());
+        set.erase(set.begin());
 
-    while (!q.empty()) {
-        int v = q.front(); q.pop_front();
-        id[v] = 2;
-        for (edge* e : g[v]) {
+        for (auto e : g[v]) {
             if (e->used()) continue;
 
-            if (e->from != v) {
-                cout << "I suck";
-            }
             int to = e->to;
-            int cost = e->cost;
-
-            if (distance[to] > distance[v] + cost) {
-                distance[to] = distance[v] + cost;
-                parent[to] = e;
-                if (id[to] == 0) q.push_back(to);
-                else if (id[to] == 2) q.push_front(to);
+            int cost = e->cost + (potential[to] - potential[v]);
+            if (d[to] > d[v] + cost) {
+                set.erase(to);
+                d[to] = d[v] + cost;
+                parent_edge[to] = e;
+                set.insert(to);
             }
         }
     }
-
-    // increase flow throug the shortest path 
-    edge *curr = parent[to];
-    while (curr != nullptr) {
+    
+    auto curr = parent_edge[to];
+    while (curr) {
         curr->inc_flow();
-        curr = parent[curr->from];
+        curr = parent_edge[curr->from];
     }
 
-    return distance[to];
+    long long ans = d[to] == __LONG_LONG_MAX__ ? __LONG_LONG_MAX__ : d[to] - potential[to];
+
+    for (int i = 0; i < g.size(); i++) {
+        potential[i] -= d[i] == __LONG_LONG_MAX__ ? 0 : d[i];
+    }
+
+
+    return ans;
 }
 
 int main() {
