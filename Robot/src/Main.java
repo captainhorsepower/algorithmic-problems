@@ -1,7 +1,8 @@
-import java.util.Arrays;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
+import com.sun.xml.internal.ws.api.model.wsdl.WSDLOutput;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class Main {
@@ -58,16 +59,32 @@ public class Main {
 
     }
 
+    public static void main(String[] args) throws IOException {
 
-    public static void main(String[] args) {
+        File folder = new File("tests/");
 
-        int[][] vp = {
-                {4, 2},
-                {0, 2},
-                {4, 0},
-                {3, 4},
-        };
+        for (File test : folder.listFiles()) {
+            Scanner scanner = new Scanner(test);
+            int n = scanner.nextInt();
+            long ans = scanner.nextLong();
+            scanner.nextLine();
+            int[][] vp = new int[n][2];
+            for (int vpRowItr = 0; vpRowItr < n; vpRowItr++) {
+                String[] vpRowItems = scanner.nextLine().split(" ");
+                for (int vpColumnItr = 0; vpColumnItr < 2; vpColumnItr++) {
+                    int vpItem = Integer.parseInt(vpRowItems[vpColumnItr]);
+                    vp[vpRowItr][vpColumnItr] = vpItem;
+                }
+            }
+            scanner.close();
 
-        System.out.println(robot(vp));
+            long result = robot(vp);
+
+            if (result != ans) {
+                System.out.printf("ERROR %10s: ans=%d, expected=%d\n", test.getName(), result, ans);
+            }
+        }
+
+        System.out.println("finished");
     }
 }
