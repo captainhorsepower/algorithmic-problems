@@ -1,14 +1,61 @@
-import com.sun.xml.internal.ws.api.model.wsdl.WSDLOutput;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.Arrays;
+import java.util.NavigableSet;
+import java.util.Scanner;
+import java.util.TreeSet;
 
 public class Main {
 
+    static class FastMax {
+
+        private int[] range;
+
+        FastMax(int[][] vals) {
+            int n;
+            for (n = 1; (n >> 1) < vals.length; n <<= 1) ;
+            this.range = new int[n];
+
+            for (int i = 0, j = n / 2; i < vals.length; i++, j++) {
+                range[j] = vals[i][1];
+            }
+
+            for (int i = n / 2 - 1; i > 0; i--) {
+                range[i] = Math.max(range[2 * i], range[2 * i + 1]);
+            }
+        }
+
+        int max(int l, int r) {
+            int n = range.length;
+            l += n >> 1;
+            r += n >> 1;
+
+            // [l, r] from now on
+            int lMax = range[l];
+            int rMax = range[r];
+
+            while (r - l > 1) {
+                lMax = (l & 1) == 0 ? range[l / 2] : lMax;
+                rMax = (r & 1) == 0 ? rMax : range[r / 2];
+
+                l >>= 1;
+                r >>= 1;
+            }
+
+            return Math.max(lMax, rMax);
+        }
+    }
+
+    static class Stop {
+        long record = 0;
+        int maxDistance = 0;
+    }
+
+
     static long[] accumScore;
-    static long[] stops;
+    static Stop[] stops;
+    static NavigableSet<Integer> set = new TreeSet<>();
+    static FastMax fastMax;
 
     static void initAccumSum(int[][] vp) {
         accumScore = new long[vp.length];
@@ -20,7 +67,32 @@ public class Main {
     }
 
     static void initStops(int[][] vp) {
-        stops = new long[vp.length];
+        stops = new Stop[vp.length];
+        Arrays.fill(stops, new Stop());
+    }
+
+    static void findStops(int[][] vp, int currInd, int l, int r) {
+        int maxPower = fastMax.max(l, r);
+        int minDistance = stops[currInd].maxDistance;
+        if (r + maxPower < minDistance) return;
+
+        if (r - l < 16) {
+            for (; l <= r; l++) {
+                int power = vp[l][1];
+                long score = stops[currInd].record + accumScore[l - 1] - accumScore[currInd];
+
+                if (l + power > minDistance) {
+                    set.add(l);
+                    stops[l].record = Math.max(score, stops[l].record);
+                    stops[l].maxDistance = stops[l].record > score ? stops[l].maxDistance : l + power;
+                }
+            }
+            return;
+        }
+
+        int m = (l + r) / 2;
+        findStops(vp, currInd, l, m);
+        findStops(vp, currInd, m + 1, r);
     }
 
     /*
@@ -30,8 +102,7 @@ public class Main {
 
         initAccumSum(vp);
         initStops(vp);
-
-        NavigableSet<Integer> set = new TreeSet<>();
+        fastMax = new FastMax(vp);
 
         final int N = vp.length - 1;
 
@@ -40,22 +111,21 @@ public class Main {
             int currInd = set.pollFirst(); // lowest
 
             int currPower = vp[currInd][1];
+            int currMaxDistance = currInd + currPower;
 
-            if (currInd + currPower >= N) {
-                stops[N] = Math.max(stops[N], stops[currInd] + accumScore[N] - accumScore[currInd]);
+            if (currMaxDistance >= N) {
+                stops[N].record = Math.max(
+                        stops[N].record,
+                        stops[currInd].record + accumScore[N] - accumScore[currInd]
+                );
                 continue;
             }
 
-            for (int i = currInd + 1; i <= currInd + currPower; i++) {
-                int power = vp[i][1];
-                if (i + power < currInd + currPower) continue;
-
-                set.add(i);
-                stops[i] = Math.max(stops[i], stops[currInd] + accumScore[i - 1] - accumScore[currInd]);
-            }
+            findStops(vp, currInd, currInd + 1, currMaxDistance);
+            set.subSet(1, 2);
         }
 
-        return stops[N];
+        return stops[N].record;
 
     }
 
@@ -81,7 +151,7 @@ public class Main {
             long result = robot(vp);
 
             if (result != ans) {
-                System.out.printf("ERROR %10s: ans=%d, expected=%d\n", test.getName(), result, ans);
+                System.out.printf("ERROR %-15s: ans %-14d expected %-14d ans-expected %-14d\n", test.getName(), result, ans, result - ans);
             }
         }
 
