@@ -1,6 +1,5 @@
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.NavigableSet;
 import java.util.Scanner;
 import java.util.TreeSet;
@@ -46,16 +45,12 @@ public class Main {
         }
     }
 
-    static class Stop {
-        long record = 0;
-        int maxDistance = 0;
-    }
 
 
-    static long[] accumScore;
-    static Stop[] stops;
-    static NavigableSet<Integer> set = new TreeSet<>();
     static FastMax fastMax;
+    static long[] accumScore;
+    static long[] stopsRecords;
+    static NavigableSet<Integer> set = new TreeSet<>();
 
     static void initAccumSum(int[][] vp) {
         accumScore = new long[vp.length];
@@ -67,39 +62,33 @@ public class Main {
     }
 
     static void initStops(int[][] vp) {
-        stops = new Stop[vp.length];
-        Arrays.fill(stops, new Stop());
+        stopsRecords = new long[vp.length];
     }
 
-    static void findStops(int[][] vp, int currInd, int l, int r) {
+    static void findStops(int[][] vp, int startInd, int l, int r) {
         int maxPower = fastMax.max(l, r);
-        int minDistance = stops[currInd].maxDistance;
-        if (r + maxPower < minDistance) return;
+        int endInd = startInd + vp[startInd][1];
+        if (r + maxPower < endInd) return;
 
         if (r - l < 16) {
             for (; l <= r; l++) {
                 int power = vp[l][1];
-                long score = stops[currInd].record + accumScore[l - 1] - accumScore[currInd];
-
-                if (l + power > minDistance) {
-                    set.add(l);
-                    stops[l].record = Math.max(score, stops[l].record);
-                    stops[l].maxDistance = stops[l].record > score ? stops[l].maxDistance : l + power;
-                }
+                if (l + power < endInd) continue;
+                set.add(l);
             }
+
             return;
         }
 
         int m = (l + r) / 2;
-        findStops(vp, currInd, l, m);
-        findStops(vp, currInd, m + 1, r);
+        findStops(vp, startInd, l, m);
+        findStops(vp, startInd, m + 1, r);
     }
 
     /*
      * Complete the robot function below.
      */
     static long robot(int[][] vp) {
-
         initAccumSum(vp);
         initStops(vp);
         fastMax = new FastMax(vp);
@@ -114,18 +103,21 @@ public class Main {
             int currMaxDistance = currInd + currPower;
 
             if (currMaxDistance >= N) {
-                stops[N].record = Math.max(
-                        stops[N].record,
-                        stops[currInd].record + accumScore[N] - accumScore[currInd]
+                stopsRecords[N] = Math.max(
+                        stopsRecords[N],
+                        stopsRecords[currInd] + accumScore[N] - accumScore[currInd]
                 );
                 continue;
             }
 
             findStops(vp, currInd, currInd + 1, currMaxDistance);
-            set.subSet(1, 2);
+
+            for (Integer i : set.subSet(currInd + 1, currMaxDistance)) {
+                stopsRecords[i] = Math.max(stopsRecords[i], stopsRecords[currInd] + accumScore[i - 1] - accumScore[currInd]);
+            }
         }
 
-        return stops[N].record;
+        return stopsRecords[N];
 
     }
 
