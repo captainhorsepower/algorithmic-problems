@@ -1,123 +1,158 @@
 import java.io.File;
 import java.io.IOException;
-import java.util.NavigableSet;
+import java.util.Arrays;
 import java.util.Scanner;
-import java.util.TreeSet;
 
 public class Main {
 
-    static class FastMax {
+    static class ScoreTree {
+        private int[][] vp;
 
-        private int[] range;
+        private int n;
+        long[] accumScore;
 
-        FastMax(int[][] vals) {
-            int n;
-            for (n = 1; (n >> 1) < vals.length; n <<= 1) ;
-            this.range = new int[n];
+        /**
+         * рекорды по индексу рекордсмена
+         */
+        private long[] scores;
 
-            for (int i = 0, j = n / 2; i < vals.length; i++, j++) {
-                range[j] = vals[i][1];
-            }
+        /**
+         * представляет из себя дерево
+         * - нижний уровень пусть будет j: 0..N - номера шагов.
+         * нижний_уровень[j] = номер шага (был раньше j), на котором взяли энергию,
+         * и в результате получили максимально возможный счёт на текущем шаге.
+         * НО, это не массив, а дерево, поэтому на нижнем уровне на самом деле
+         * не хранится инфа непосредственно в [j], она может находится в дереве выше.
+         * <p>
+         * Поэтому, чтобы получить индекс рекодсмена, надо
+         * - пройти до корня, собрать всех рекордсменов
+         * - откинуть тех, кто не доходит до этой клетки (??? может это не надо)
+         * - выбрать наилучшего
+         */
+        int[] recordSettersTree;
 
-            for (int i = n / 2 - 1; i > 0; i--) {
-                range[i] = Math.max(range[2 * i], range[2 * i + 1]);
+        public ScoreTree(int[][] vp) {
+            this.vp = vp;
+            for (n = 1; (n >> 1) < vp.length; n <<= 1) ;
+
+            this.recordSettersTree = new int[n];
+            Arrays.fill(recordSettersTree, -1);
+            recordSettersTree[toTreeInd(0)] = 0;
+
+            this.scores = new long[vp.length];
+
+            accumScore = new long[vp.length];
+            accumScore[0] = vp[0][0];
+            for (int i = 1; i < vp.length; i++) {
+                accumScore[i] = accumScore[i - 1] + vp[i][0];
             }
         }
 
-        int max(int l, int r) {
-            int n = range.length;
-            l += n >> 1;
-            r += n >> 1;
-
-            // [l, r] from now on
-            int lMax = range[l];
-            int rMax = range[r];
-
-            while (r - l > 1) {
-                lMax = (l & 1) == 0 ? range[l / 2] : lMax;
-                rMax = (r & 1) == 0 ? rMax : range[r / 2];
-
-                l >>= 1;
-                r >>= 1;
+        /**
+         * @param ind номер хода
+         * @return лучший счёт, с которым можно начинать этот ход
+         */
+        public long getScore(int ind) {
+            long score = -1L;
+            int treeInd = toTreeInd(ind);
+            int recordInd = recordSettersTree[treeInd];
+            for (; treeInd > 0; treeInd >>= 1, recordInd = recordSettersTree[treeInd]) {
+                if ((recordInd == -1) || (recordInd + vp[recordInd][1] < ind)) continue;
+                long parentScore = scores[recordInd] + accumScore[Math.max(ind - 1, 0)] - accumScore[recordInd];
+                score = Math.max(score, parentScore);
             }
 
-            return Math.max(lMax, rMax);
+            return score;
+        }
+
+
+        /**
+         * На каждом ходу, беру ход (его результат (как он может улучшить ситуацию впереди))
+         * и вешаю в дерево.
+         * Начну  с того, что вешать буду только на правую ветку, т.к. в левую мне не надо будет идти ??
+         *
+         * @param l
+         */
+        public void put(int l) {
+            int r = Math.min(l + vp[l][1], vp.length - 1);
+
+            long lScore = getScore(l);
+            long rScore = l == 0 ? 0 : l + accumScore[r - 1] - accumScore[l];
+            scores[l] = lScore;
+
+            int rTree = toTreeInd(r);
+            // handle first step
+            int recordInd = recordSettersTree[rTree];
+            if (recordInd != -1) {
+                long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
+                if (rScore <= recordScore) {
+                    return;
+                }
+            }
+
+            recordSettersTree[rTree] = l;
+            int localRootInd = getLocalRootInd(l, r);
+
+            boolean cameFromLeft, goDown = false;
+            // go up tree
+            for (cameFromLeft = (rTree & 1) == 0, rTree >>= 1; rTree >= localRootInd; cameFromLeft = (rTree & 1) == 0, rTree >>= 1) {
+                recordInd = recordSettersTree[rTree];
+
+                if (recordInd == -1) {
+                    recordSettersTree[rTree] = l;
+                    continue;
+                }
+
+                long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
+                if (cameFromLeft) {
+                    if (rScore <= recordScore) break;
+                } else {
+                    if (rScore < recordScore) {
+                        goDown = true;
+                        break;
+                    }
+                }
+
+                recordSettersTree[rTree] = l;
+            }
+
+            // go down
+            if (goDown) {
+                rTree <<= 1; // one time descend left, all other times descend right
+                for (; rTree < recordSettersTree.length; rTree = rTree * 2 + 1) {
+                    recordInd = recordSettersTree[rTree];
+                    if (recordInd == -1) {
+                        recordSettersTree[rTree] = l;
+                        continue;
+                    }
+
+                    long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
+                    if (rScore >= recordScore) {
+                        recordSettersTree[rTree] = l;
+                    }
+                }
+            }
+        }
+
+        private int toTreeInd(int ind) {
+            return ind + n / 2;
+        }
+
+        private int getLocalRootInd(int l, int r) {
+            int lTree = toTreeInd(l), rTree = toTreeInd(r);
+            for (; lTree != rTree; rTree >>= 1, lTree >>= 1) ;
+            return lTree;
         }
     }
 
+    static long robot(int[][] input) {
+        ScoreTree scoreTree = new ScoreTree(input);
 
-
-    static FastMax fastMax;
-    static long[] accumScore;
-    static long[] stopsRecords;
-    static NavigableSet<Integer> set = new TreeSet<>();
-
-    static void initAccumSum(int[][] vp) {
-        accumScore = new long[vp.length];
-        long sum = 0L;
-        for (int i = 0; i < vp.length; i++) {
-            sum += vp[i][0];
-            accumScore[i] = sum;
-        }
-    }
-
-    static void initStops(int[][] vp) {
-        stopsRecords = new long[vp.length];
-    }
-
-    static void findStops(int[][] vp, int startInd, int l, int r) {
-        int maxPower = fastMax.max(l, r);
-        int endInd = startInd + vp[startInd][1];
-        if (r + maxPower < endInd) return;
-
-        if (r - l < 16) {
-            for (; l <= r; l++) {
-                int power = vp[l][1];
-                if (l + power < endInd) continue;
-                set.add(l);
-            }
-
-            return;
+        for (int l = 0, r = input.length; l < r; l++) {
+            scoreTree.put(l);
         }
 
-        int m = (l + r) / 2;
-        findStops(vp, startInd, l, m);
-        findStops(vp, startInd, m + 1, r);
-    }
-
-    /*
-     * Complete the robot function below.
-     */
-    static long robot(int[][] vp) {
-        initAccumSum(vp);
-        initStops(vp);
-        fastMax = new FastMax(vp);
-
-        final int N = vp.length - 1;
-
-        set.add(0);
-        while (!set.isEmpty()) {
-            int currInd = set.pollFirst(); // lowest
-
-            int currPower = vp[currInd][1];
-            int currMaxDistance = currInd + currPower;
-
-            if (currMaxDistance >= N) {
-                stopsRecords[N] = Math.max(
-                        stopsRecords[N],
-                        stopsRecords[currInd] + accumScore[N] - accumScore[currInd]
-                );
-                continue;
-            }
-
-            findStops(vp, currInd, currInd + 1, currMaxDistance);
-
-            for (Integer i : set.subSet(currInd + 1, currMaxDistance)) {
-                stopsRecords[i] = Math.max(stopsRecords[i], stopsRecords[currInd] + accumScore[i - 1] - accumScore[currInd]);
-            }
-        }
-
-        return stopsRecords[N];
+        return input[input.length - 1][0] + scoreTree.getScore(input.length - 1);
 
     }
 
