@@ -1,7 +1,10 @@
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Scanner;
+import java.util.function.ToIntFunction;
 
 public class Main {
 
@@ -160,27 +163,35 @@ public class Main {
 
         File folder = new File("tests/");
 
-        for (File test : folder.listFiles()) {
-            Scanner scanner = new Scanner(test);
-            int n = scanner.nextInt();
-            long ans = scanner.nextLong();
-            scanner.nextLine();
-            int[][] vp = new int[n][2];
-            for (int vpRowItr = 0; vpRowItr < n; vpRowItr++) {
-                String[] vpRowItems = scanner.nextLine().split(" ");
-                for (int vpColumnItr = 0; vpColumnItr < 2; vpColumnItr++) {
-                    int vpItem = Integer.parseInt(vpRowItems[vpColumnItr]);
-                    vp[vpRowItr][vpColumnItr] = vpItem;
-                }
-            }
-            scanner.close();
+        ToIntFunction<File> toN = (f) -> Integer.parseInt(f.getName().replace("test", "").replace(".txt", ""));
+        Arrays.stream(folder.listFiles())
+                .sorted(Comparator.comparingInt(toN::applyAsInt))
+                .forEach(test -> {
+                    Scanner scanner = null;
+                    try {
+                        scanner = new Scanner(test);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    int n = scanner.nextInt();
+                    long ans = scanner.nextLong();
+                    scanner.nextLine();
+                    int[][] vp = new int[n][2];
+                    for (int vpRowItr = 0; vpRowItr < n; vpRowItr++) {
+                        String[] vpRowItems = scanner.nextLine().split(" ");
+                        for (int vpColumnItr = 0; vpColumnItr < 2; vpColumnItr++) {
+                            int vpItem = Integer.parseInt(vpRowItems[vpColumnItr]);
+                            vp[vpRowItr][vpColumnItr] = vpItem;
+                        }
+                    }
+                    scanner.close();
 
-            long result = robot(vp);
+                    long result = robot(vp);
 
-            if (result != ans) {
-                System.out.printf("ERROR %-15s: ans %-14d expected %-14d ans-expected %-14d\n", test.getName(), result, ans, result - ans);
-            }
-        }
+                    if (result != ans) {
+                        System.out.printf("ERROR %-15s: ans %-14d expected %-14d ans-expected %-14d\n", test.getName(), result, ans, result - ans);
+                    }
+                });
 
         System.out.println("finished");
     }
