@@ -74,8 +74,8 @@ public class TestCaseGenerator {
         while (ans == -1) {
             System.out.printf("generate for N %d, attempt %d\n", N, counter++);
             for (int i = 0; i < N; i++) {
-                vp[i][0] = Math.abs(random.nextInt()) % 1_000_000;
-                vp[i][1] = Math.abs(random.nextInt() % (N * 3)) / 5;
+                vp[i][0] = Math.abs(random.nextInt()) % 20;
+                vp[i][1] = Math.abs(random.nextInt()) % (N * 2 / 3);
             }
 
             ans = GroundTruth.robot(vp);
@@ -87,11 +87,11 @@ public class TestCaseGenerator {
 
     public static void main(String[] args) throws IOException {
 
-        for (int i = 10; i <= 300; i += 10) {
-            TestCase testCase = generateTestCase(i);
+        for (int i = 0; i <= 32768; i += 1) {
+            TestCase testCase = generateTestCase(1024);
 
             BufferedWriter writer = new BufferedWriter(new FileWriter("tests/test" + i + ".txt"));
-            writer.write(String.valueOf(i) + " " + testCase.getAns() + "\n");
+            writer.write(testCase.getN() + " " + testCase.getAns() + "\n");
 
             for (int j = 0; j < testCase.getN(); j++) {
                 writer.write(testCase.getVp()[j][0] + " " + testCase.getVp()[j][1] + "\n");

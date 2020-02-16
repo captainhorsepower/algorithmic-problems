@@ -12,24 +12,8 @@ public class Main {
         private int n;
         long[] accumScore;
 
-        /**
-         * рекорды по индексу рекордсмена
-         */
         private long[] scores;
 
-        /**
-         * представляет из себя дерево
-         * - нижний уровень пусть будет j: 0..N - номера шагов.
-         * нижний_уровень[j] = номер шага (был раньше j), на котором взяли энергию,
-         * и в результате получили максимально возможный счёт на текущем шаге.
-         * НО, это не массив, а дерево, поэтому на нижнем уровне на самом деле
-         * не хранится инфа непосредственно в [j], она может находится в дереве выше.
-         * <p>
-         * Поэтому, чтобы получить индекс рекодсмена, надо
-         * - пройти до корня, собрать всех рекордсменов
-         * - откинуть тех, кто не доходит до этой клетки (??? может это не надо)
-         * - выбрать наилучшего
-         */
         int[] recordSettersTree;
 
         public ScoreTree(int[][] vp) {
@@ -49,10 +33,6 @@ public class Main {
             }
         }
 
-        /**
-         * @param ind номер хода
-         * @return лучший счёт, с которым можно начинать этот ход
-         */
         public long getScore(int ind) {
             long score = -1L;
             int treeInd = toTreeInd(ind);
@@ -66,14 +46,6 @@ public class Main {
             return score;
         }
 
-
-        /**
-         * На каждом ходу, беру ход (его результат (как он может улучшить ситуацию впереди))
-         * и вешаю в дерево.
-         * Начну  с того, что вешать буду только на правую ветку, т.к. в левую мне не надо будет идти ??
-         *
-         * @param l
-         */
         public void put(int l) {
             int r = Math.min(l + vp[l][1], vp.length - 1);
 
@@ -94,7 +66,6 @@ public class Main {
             int localRootInd = getLocalRootInd(l, r);
 
             boolean cameFromLeft;
-            // go up tree
             for (cameFromLeft = (rTree & 1) == 0, rTree >>= 1; rTree >= localRootInd; cameFromLeft = (rTree & 1) == 0, rTree >>= 1) {
                 recordInd = recordSettersTree[rTree];
                 if (recordInd == -1) {
@@ -110,7 +81,6 @@ public class Main {
                         goDown(rTree << 1, recordInd, recordScore);
                 } else {
                     if (lScore < recordScore) {
-//                        int topInd = rTree & 0xfffffffE; // make even
                         goDown(rTree << 1, l, lScore);
                         break;
                     }
