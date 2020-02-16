@@ -80,15 +80,14 @@ public class Main {
             int r = Math.min(l + vp[l][1], vp.length - 1);
 
             long lScore = getScore(l);
-            long rScore = l == 0 ? 0 : l + accumScore[r - 1] - accumScore[l];
             scores[l] = lScore;
 
             int rTree = toTreeInd(r);
             // handle first step
             int recordInd = recordSettersTree[rTree];
             if (recordInd != -1) {
-                long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
-                if (rScore <= recordScore) {
+                long recordScore = scores[recordInd] + accumScore[l] - accumScore[recordInd];
+                if (lScore <= recordScore) {
                     return;
                 }
             }
@@ -96,43 +95,43 @@ public class Main {
             recordSettersTree[rTree] = l;
             int localRootInd = getLocalRootInd(l, r);
 
-            boolean cameFromLeft, goDown = false;
+            boolean cameFromLeft;
             // go up tree
             for (cameFromLeft = (rTree & 1) == 0, rTree >>= 1; rTree >= localRootInd; cameFromLeft = (rTree & 1) == 0, rTree >>= 1) {
                 recordInd = recordSettersTree[rTree];
-
                 if (recordInd == -1) {
                     recordSettersTree[rTree] = l;
                     continue;
                 }
 
-                long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
+                long recordScore = scores[recordInd] + accumScore[l] - accumScore[recordInd];
                 if (cameFromLeft) {
-                    if (rScore <= recordScore) break;
+                    if (lScore <= recordScore) break;
+
+                    goDown(rTree, recordInd, recordScore);
                 } else {
-                    if (rScore < recordScore) {
-                        goDown = true;
+                    if (lScore < recordScore) {
+                        int topInd = rTree & 0xfffffffE; // make even
+                        goDown(topInd, l, lScore);
                         break;
                     }
                 }
 
                 recordSettersTree[rTree] = l;
             }
+        }
 
-            // go down
-            if (goDown) {
-                rTree <<= 1; // one time descend left, all other times descend right
-                for (; rTree < recordSettersTree.length; rTree = rTree * 2 + 1) {
-                    recordInd = recordSettersTree[rTree];
-                    if (recordInd == -1) {
-                        recordSettersTree[rTree] = l;
-                        continue;
-                    }
+        private void goDown(int topInd, int l, long lScore) {
+            for (int treeInd = topInd; treeInd < recordSettersTree.length; treeInd = treeInd * 2 + 1) {
+                int recordInd = recordSettersTree[treeInd];
+                if (recordInd == -1) {
+                    recordSettersTree[treeInd] = l;
+                    continue;
+                }
 
-                    long recordScore = scores[recordInd] + accumScore[r - 1] - accumScore[recordInd];
-                    if (rScore >= recordScore) {
-                        recordSettersTree[rTree] = l;
-                    }
+                long recordScore = scores[recordInd] + accumScore[l] - accumScore[recordInd];
+                if (recordScore < lScore) {
+                    recordSettersTree[treeInd] = l;
                 }
             }
         }
@@ -165,6 +164,7 @@ public class Main {
 
         ToIntFunction<File> toN = (f) -> Integer.parseInt(f.getName().replace("test", "").replace(".txt", ""));
         Arrays.stream(folder.listFiles())
+//                .filter(f -> toN.applyAsInt(f) == 7)
                 .sorted(Comparator.comparingInt(toN::applyAsInt))
                 .forEach(test -> {
                     Scanner scanner = null;
